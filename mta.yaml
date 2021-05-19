@@ -1,0 +1,32 @@
+_schema-version: "3.2"
+ID: devops.gitlab.tms
+version: 0.0.1
+
+build-parameters:
+  before-all:
+    - builder: custom
+      commands:
+        - npm install
+
+modules:
+- name: devops-gitlab-tms-adapter
+  type: nodejs
+  path: devops-gitlab-tms-adapter
+  build-parameters:
+    ignore: ["node_modules/"]
+  requires:
+    - name: uaa_devops.gitlab.tms
+  parameters:
+    disk-quota: 256M
+    memory: 128M
+  properties:
+    EXIT: 1  # required by deploy.js task to terminate 
+
+resources:
+- name: uaa_devops.gitlab.tms
+  type: org.cloudfoundry.managed-service
+  parameters:
+    path: ./xs-security.json
+    service: xsuaa
+    service-name: devops.gitlab.tms-xsuaa-service
+    service-plan: application

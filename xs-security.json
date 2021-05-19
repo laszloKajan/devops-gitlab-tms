@@ -1,0 +1,5 @@
+{
+  "xsappname": "devops-gitlab-tms",
+  "tenant-mode": "dedicated",
+  "description": "Cloud TMS adaptor for GitLab"
+}

@@ -1,0 +1,28 @@
+{
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Attach",
+      "port": 9229,
+      "request": "attach",
+      "skipFiles": [
+        "<node_internals>/**"
+      ],
+      "type": "pwa-node"
+    },
+    {
+      "name": "Attach to Remote",
+      "request": "attach",
+      "address": "localhost",
+      "port": 9229,
+      "skipFiles": [
+        "<node_internals>/**"
+      ],
+      "type": "pwa-node",
+      "localRoot": "${workspaceFolder}/devops-gitlab-tms-adapter",
+      "remoteRoot": "/home/vcap/app"
+    }
+  ]
+}

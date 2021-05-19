@@ -1,0 +1,20 @@
+{
+    "name": "devops-gitlab-tms",
+    "version": "0.0.1",
+    "description": "Cloud TMS adaptor for GitLab",
+    "author": {
+        "name": "Laszlo Kajan",
+        "email": "laszlo.kajan@roche.com"
+    },
+    "license": "Apache-2.0",
+    "repository": {
+        "type": "git",
+        "url": "https://code.roche.com/sap-aspire/scp/supporting-projects/devops-gitlab-tms.git"
+    },
+    "dependencies": {},
+    "devDependencies": {},
+    "scripts": {
+        "rdebug": "cd devops-gitlab-tms-adapter && npm run rdebug",
+        "start": "cd devops-gitlab-tms-adapter && npm start"
+    }
+}

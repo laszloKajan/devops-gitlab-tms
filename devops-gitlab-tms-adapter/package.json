@@ -1,0 +1,24 @@
+{
+    "name": "devops-gitlab-tms-adapter",
+    "description": "Cloud TMS adaptor for GitLab",
+    "license": "Apache-2.0",
+    "repository": {
+        "type": "git",
+        "url": "https://code.roche.com/sap-aspire/scp/supporting-projects/devops-gitlab-tms.git"
+    },
+    "engines": {
+        "node": "^10.0.0 || ^12.0.0"
+    },
+    "dependencies": {
+        "cookie-parser": "~1.4.4",
+        "debug": "~2.6.9",
+        "dotenv": "^9.0.2",
+        "express": "~4.16.1",
+        "morgan": "~1.9.1"
+    },
+    "devDependencies": {},
+    "scripts": {
+        "rdebug": "cf ssh devops-gitlab-tms-adapter -N -T -L 9229:127.0.0.1:9229",
+        "start": "DEBUG=devops-gitlab-tms-adapter:* node --inspect ./bin/www"
+    }
+}
