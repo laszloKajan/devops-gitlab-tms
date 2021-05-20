@@ -21,7 +21,7 @@
         "<node_internals>/**"
       ],
       "type": "pwa-node",
-      "localRoot": "${workspaceFolder}/devops-gitlab-tms-adapter",
+      "localRoot": "${workspaceFolder}/devops-gitlab-tms-adaptor",
       "remoteRoot": "/home/vcap/app"
     }
   ]

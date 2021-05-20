@@ -14,7 +14,7 @@
     "dependencies": {},
     "devDependencies": {},
     "scripts": {
-        "rdebug": "cd devops-gitlab-tms-adapter && npm run rdebug",
-        "start": "cd devops-gitlab-tms-adapter && npm start"
+        "rdebug": "cd devops-gitlab-tms-adaptor && npm run rdebug",
+        "start": "cd devops-gitlab-tms-adaptor && npm start"
     }
 }

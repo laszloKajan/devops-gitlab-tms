@@ -9,9 +9,9 @@ build-parameters:
         - npm install
 
 modules:
-- name: devops-gitlab-tms-adapter
+- name: devops-gitlab-tms-adaptor
   type: nodejs
-  path: devops-gitlab-tms-adapter
+  path: devops-gitlab-tms-adaptor
   build-parameters:
     ignore: ["node_modules/"]
   requires:

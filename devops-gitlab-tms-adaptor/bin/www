@@ -8,7 +8,7 @@ require('dotenv').config();
  */
 
 var app = require('../app');
-var debug = require('debug')('devops-gitlab-tms-adapter:server');
+var debug = require('debug')('devops-gitlab-tms-adaptor:server');
 var http = require('http');
 
 /**

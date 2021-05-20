@@ -1,5 +1,5 @@
 {
-    "name": "devops-gitlab-tms-adapter",
+    "name": "devops-gitlab-tms-adaptor",
     "description": "Cloud TMS adaptor for GitLab",
     "license": "Apache-2.0",
     "repository": {
@@ -18,7 +18,7 @@
     },
     "devDependencies": {},
     "scripts": {
-        "rdebug": "cf ssh devops-gitlab-tms-adapter -N -T -L 9229:127.0.0.1:9229",
-        "start": "DEBUG=devops-gitlab-tms-adapter:* node --inspect ./bin/www"
+        "rdebug": "cf ssh devops-gitlab-tms-adaptor -N -T -L 9229:127.0.0.1:9229",
+        "start": "DEBUG=devops-gitlab-tms-adaptor:* node --inspect ./bin/www"
     }
 }
