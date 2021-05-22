@@ -4,8 +4,10 @@ var cookieParser = require('cookie-parser');
 var logger = require('morgan');
 
 var indexRouter = require('./routes/index');
-var usersRouter = require('./routes/users');
+var v2NodesRouter = require('./routes/v2-nodes');
+var v2RoutesRouter = require('./routes/v2-routes');
 var versionsRouter = require('./routes/versions');
+// API: https://api.sap.com/api/TMS_v2/resource
 
 var app = express();
 
@@ -16,7 +18,8 @@ app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/', indexRouter);
-app.use('/users', usersRouter);
+app.use('/v2/nodes', v2NodesRouter);
+app.use('/v2/routes', v2RoutesRouter);
 app.use('/versions', versionsRouter);
 
 module.exports = app;

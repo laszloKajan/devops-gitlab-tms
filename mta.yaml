@@ -13,7 +13,7 @@ modules:
   type: nodejs
   path: devops-gitlab-tms-adaptor
   build-parameters:
-    ignore: ["node_modules/"]
+    ignore: [".env", ".gitignore", "node_modules/"]
   requires:
     - name: uaa_devops.gitlab.tms
   parameters:
