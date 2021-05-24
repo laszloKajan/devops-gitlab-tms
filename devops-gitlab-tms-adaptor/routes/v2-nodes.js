@@ -110,7 +110,7 @@ router.get('/:nodeId(\\d+)/transportRequests', async function (req, res, next) {
             const tagsUrl = `https://${process.env.GITLAB_HOST}/api/v4/projects/${glProjectId}/repository/tags?search=^v`;
             debug(`axios GET ${tagsUrl}`);
             return axios.get(tagsUrl, {
-                headers: { 'Authorization': `Bearer ${process.env.GITLAB_ACCESS_READ_API}` }
+                headers: { 'Authorization': `Bearer ${process.env.GITLAB_ACCESS_API}` }
             });
         });
 
@@ -124,7 +124,8 @@ router.get('/:nodeId(\\d+)/transportRequests', async function (req, res, next) {
                 (acc, elem) => { acc[elem.name] = elem; }, {});
             const rcTags = response.data.filter(elem => {
                 let matches = elem.name.match(/^(v\d+\.\d+\.\d+)-rc\.\d+$/);
-                return matches.length >= 2 && !releaseTags[matches[1]] });
+                return matches.length >= 2 && !releaseTags[matches[1]]
+            });
 
             const _transportRequests = rcTags.map((elem) => {
                 // Map commit to tr. req. id:
@@ -167,6 +168,11 @@ router.get('/:nodeId(\\d+)/transportRequests', async function (req, res, next) {
 
 router.post('/:nodeId(\\d+)/transportRequests/import', async function (req, res) {
     // API: https://api.sap.com/api/TMS_v2/resource
+    // TODO: Implement bearer token policy.
+    res.send({
+        "actionId": 171,
+        "monitoringURL": "/v2/actions/171"
+    });
 });
 
 module.exports = router;
