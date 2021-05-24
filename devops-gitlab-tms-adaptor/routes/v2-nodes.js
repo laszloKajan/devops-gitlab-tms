@@ -103,7 +103,7 @@ router.get('/:nodeId(\\d+)/transportRequests', async function (req, res, next) {
     let transportRequestPosition = 1;
     let statusArray = req.query.status ? decodeURIComponent(req.query.status).split(',') : [];
 
-    if (req.params.nodeId == '2' && statusArray.filter(status => status === 'in').length ) {
+    if (req.params.nodeId == '2' && statusArray.filter(status => status === 'in').length) {
         const glProjects = JSON.parse(process.env.GITLAB_PROJECTS); // [4396]
 
         let promises = glProjects.map(glProjectId => {
@@ -117,7 +117,16 @@ router.get('/:nodeId(\\d+)/transportRequests', async function (req, res, next) {
         let responses = await Promise.all(promises);
 
         transportRequests = responses.reduce((acc, response) => {
-            const _transportRequests = response.data.map((elem) => {
+            // 'in'(initial) are those tags (transport requests) that are:
+            //  ^vx.y.z-rc.n$
+            //  with no corresponding release tag ^vx.y.z$
+            const releaseTags = response.data.filter(elem => /^v\d+\.\d+\.\d+$/.test(elem.name)).reduce(
+                (acc, elem) => { acc[elem.name] = elem; }, {});
+            const rcTags = response.data.filter(elem => {
+                let matches = elem.name.match(/^(v\d+\.\d+\.\d+)-rc\.\d+$/);
+                return matches.length >= 2 && !releaseTags[matches[1]] });
+
+            const _transportRequests = rcTags.map((elem) => {
                 // Map commit to tr. req. id:
                 //  Convert first 13 characters (52 bits) of commit to transport request id, which 53 bits precision:
                 //  parseInt("1dabe74c48a320db1d3c8a04d7fba4ec4025097f".substr(0, 13), 16)
@@ -154,6 +163,10 @@ router.get('/:nodeId(\\d+)/transportRequests', async function (req, res, next) {
     res.send({
         "transportRequests": transportRequests
     });
+});
+
+router.post('/:nodeId(\\d+)/transportRequests/import', async function (req, res) {
+    // API: https://api.sap.com/api/TMS_v2/resource
 });
 
 module.exports = router;
