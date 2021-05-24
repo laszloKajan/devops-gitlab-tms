@@ -129,9 +129,9 @@ router.get('/:nodeId(\\d+)/transportRequests', async function (req, res, next) {
                 "archived": false,
                 "position": transportRequestPosition++,
                 "createdBy": elem.commit.committer_email,
-                "createdAt": elem.commit.committed_date, // "2021-04-14T12:24:41.000+00:00"
+                "createdAt": elem.commit.committed_date,    // "2021-04-14T12:24:41.000+00:00"
                 "description": trDescription,
-                "origin": "TGT",
+                "origin": "DGT",                            // /dev/ node!
                 "entries": [
                     {
                         "id": trEntryId,
