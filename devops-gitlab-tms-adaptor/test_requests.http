@@ -1,0 +1,12 @@
+### POST /v2/nodes/2/transportRequests/import
+###     1dabe74c48a320db1d3c8a04d7fba4ec4025097f
+POST http://localhost:30000/v2/nodes/2/transportRequests/import
+Content-Type: application/json
+Accept: application/json
+
+{
+    "transportRequests": [521986514389554]
+}
+
+### GET /v2/nodes/2/transportRequests?status=in
+GET http://localhost:30000/v2/nodes/2/transportRequests?status=in

@@ -129,7 +129,7 @@ router.get('/:nodeId(\\d+)/transportRequests', async function (req, res, next) {
 
             const _transportRequests = rcTags.map((elem) => {
                 // Map commit to tr. req. id:
-                //  Convert first 13 characters (52 bits) of commit to transport request id, which 53 bits precision:
+                //  Convert first 13 characters (52 bits) of commit to transport request id, which is 53 bits precision:
                 //  parseInt("1dabe74c48a320db1d3c8a04d7fba4ec4025097f".substr(0, 13), 16)
                 function commit2id(__commit) { return parseInt(__commit.substr(0, 13), 16); }
                 const trId = commit2id(elem.commit.id);
@@ -169,10 +169,52 @@ router.get('/:nodeId(\\d+)/transportRequests', async function (req, res, next) {
 router.post('/:nodeId(\\d+)/transportRequests/import', async function (req, res) {
     // API: https://api.sap.com/api/TMS_v2/resource
     // TODO: Implement bearer token policy.
-    res.send({
-        "actionId": 171,
-        "monitoringURL": "/v2/actions/171"
-    });
+    if (req.body.transportRequests.length !== 1) { throw new Error(`unsupported number of transport requests: ${req.body.transportRequests.length}`); }
+
+    const glProjects = JSON.parse(process.env.GITLAB_PROJECTS); // [4396]
+
+    switch (req.params.nodeId) {
+        case "2":   // CONS aka. TEST: should already have been imported
+            const trId = req.body.transportRequests[0];
+            const commitHashFragment = trId.toString(16).padStart(13, '0');
+
+            // Find which project the transport request (= commit) belongs to:
+            //  use transport id to get committed_date from commit
+            let commitPromises = glProjects.map(glProjectId => {                // for each project ID
+                const commitsUrl = `https://${process.env.GITLAB_HOST}/api/v4/projects/${glProjectId}/repository/commits/${commitHashFragment}?stats=false`;
+                debug(`axios GET ${commitsUrl}`);
+                return axios.get(commitsUrl, {
+                    headers: { 'Authorization': `Bearer ${process.env.GITLAB_ACCESS_API}` }
+                });
+            });
+            let responses = await Promise.all(commitPromises);
+            const commitResponses = responses.filter(response => response.status === 200);
+            if (commitResponses.length < 1) { throw new Error(`could not find commit ${commitHashFragment}`); }
+            const committed_date = commitResponses[0].data.committed_date;
+
+            // Use committed_date, environment and status to get deployment, return deployment job number as action id
+            const deploymentUrl = `https://${process.env.GITLAB_HOST}/api/v4/projects/${commitResponses[0].data.project_id}/deployments?` +
+                `environment=Test&status=success&updated_after=${encodeURIComponent(committed_date)}&` +
+                'order_by=created_at&sort=desc';
+            debug(`axios GET ${deploymentUrl}`);
+            const deploymentResponse = await axios.get(deploymentUrl, {
+                headers: { 'Authorization': `Bearer ${process.env.GITLAB_ACCESS_API}` }
+            });
+
+            const deployments = deploymentResponse.data.filter(elem => elem.sha === commitResponses[0].data.id);
+            const deployment = deployments[0];
+
+            res.send({
+                "actionId": deployment.deployable.id,
+                // TODO
+                "monitoringURL": `/api/v4/projects/${deployment.deployable.pipeline.project_id}/jobs/${deployment.deployable.id}`
+            });
+            // Return deployment job status as action status
+            break;
+
+        default:
+            throw new Error('unimplemented');
+    }
 });
 
 module.exports = router;
