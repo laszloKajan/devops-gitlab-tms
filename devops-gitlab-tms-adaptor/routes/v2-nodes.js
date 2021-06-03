@@ -1,3 +1,4 @@
+'use strict';
 const axios = require('axios');
 var debug = require('debug')('devops-gitlab-tms-adaptor:routes-v2-nodes');
 var express = require('express');
@@ -162,11 +163,11 @@ router.get('/:nodeId(\\d+)/transportRequests', async function (req, res, next) {
                 // 'in'(initial) are those tags (transport requests) that are:
                 //  ^vx.y.z-rc.n$
                 //  with no corresponding release tag ^vx.y.z$
-                const releaseTags = response.data.filter(elem => /^v\d+\.\d+\.\d+$/.test(elem.name)).reduce(
-                    (acc, elem) => { acc[elem.name] = elem; }, {});
+                const releaseTags = response.data.filter(elem => /^v\d+\.\d+\.\d+$/.test(elem.name)).
+                    reduce((acc, elem) => { acc[elem.name] = elem; return acc; }, {});
                 const rcTags = response.data.filter(elem => {
                     let matches = elem.name.match(/^(v\d+\.\d+\.\d+)-rc\.\d+$/);
-                    return matches.length >= 2 && !releaseTags[matches[1]]
+                    return matches && matches.length >= 2 && !releaseTags[matches[1]];
                 });
 
                 const _transportRequests = rcTags.map((elem) => {
@@ -174,6 +175,58 @@ router.get('/:nodeId(\\d+)/transportRequests', async function (req, res, next) {
                     const trId = utils.commit2id(elem.commit.id);
                     const trEntryId = utils.commit2id(elem.commit.short_id);
                     const trDescription = `project: ${glProjectId}, tag: ${elem.name}, commit: ${elem.commit.id}`.
+                        replace(/[^\w ._~:\/?#[\]@!$&()*+,;=%-]/g, '_'); // C.f. devops-scripts/tms-upload
+
+                    return {
+                        "id": trId,           // integer($int64) in the API definition, but we really have only 53 bits, see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/MAX_SAFE_INTEGER
+                        "status": trStatus,
+                        "archived": false,
+                        "position": transportRequestPosition++,
+                        "createdBy": elem.commit.committer_email,
+                        "createdAt": elem.commit.committed_date,    // "2021-04-14T12:24:41.000+00:00"
+                        "description": trDescription,
+                        "origin": "DGT",                            // Give /dev/ node
+                        "entries": [
+                            {
+                                "id": trEntryId,
+                                "storageType": "FILE",
+                                "contentType": "MTA",
+                                "uri": `${trEntryId}`   // "4378"
+                            }
+                        ]
+                    };
+                });
+
+                return acc.concat(_transportRequests);
+            }, []);
+
+        } else if (req.params.nodeId === '4' &&
+            statusArray.filter(status => (status === 'in') || (status === 're')).length) {
+
+            const glProjects = utils.getGlProjects(); // [4396]
+            const trStatus = 'initial';
+
+            let promises = glProjects.map(glProjectId => {
+                const tagsUrl = `https://${process.env.GITLAB_HOST}/api/v4/projects/${glProjectId}/repository/branches?` +
+                    'search=^quality-';
+                debug(`axios GET ${tagsUrl}`);
+                return axios.get(tagsUrl, {
+                    headers: { 'Authorization': `Bearer ${process.env.GITLAB_ACCESS_API}` }
+                });
+            });
+            let responses = await Promise.all(promises);
+
+            transportRequests = responses.reduce((acc, response, index) => {
+                const glProjectId = glProjects[index];
+
+                // 'in'(initial) are the unmerged ^quality- branches
+                const unmergedBranches = response.data.filter(elem => elem.merged === false);
+
+                const _transportRequests = unmergedBranches.map((elem) => {
+                    // Map commit to tr. req. id:
+                    const trId = utils.commit2id(elem.commit.id);
+                    const trEntryId = utils.commit2id(elem.commit.short_id);
+                    const trDescription = `project: ${glProjectId}, branch: ${elem.name}, commit: ${elem.commit.id}`.
                         replace(/[^\w ._~:\/?#[\]@!$&()*+,;=%-]/g, '_'); // C.f. devops-scripts/tms-upload
 
                     return {
@@ -311,7 +364,7 @@ router.get('/:nodeId(\\d+)/transportRequests/:trId(\\d+)/logs', async function (
                 const commitHashFragment = trId.toString(16).padStart(13, '0');
 
                 // Find job of environment=Test deployment given the commit hash fragment
-                const commit = await getCommit(glProjects, commitHashFragment, processEnv);
+                const commit = await getCommit(glProjects, commitHashFragment, process.env);
                 const deployment = await getDeploymentJob(commit, process.env);
                 const tmStatus = utils.getTmStatus(deployment.deployable.status);
 

@@ -1,3 +1,4 @@
+'use strict';
 var utils = {
     //  Convert first 13 characters (52 bits) of commit to transport request id, which is 53 bits precision:
     //  parseInt("1dabe74c48a320db1d3c8a04d7fba4ec4025097f".substr(0, 13), 16)

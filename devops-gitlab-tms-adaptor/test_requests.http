@@ -1,3 +1,6 @@
+### GET /v2/nodes/4/transportRequests?status=in%2cre
+GET http://localhost:30000/v2/nodes/4/transportRequests?status=in%2cre
+
 ### GET /v2/actions/1825798
 GET http://localhost:30000/v2/actions/1825798
 

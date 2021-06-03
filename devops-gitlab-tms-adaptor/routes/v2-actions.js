@@ -1,3 +1,4 @@
+'use strict';
 const axios = require('axios');
 var debug = require('debug')('devops-gitlab-tms-adaptor:routes-v2-actions');
 var express = require('express');
