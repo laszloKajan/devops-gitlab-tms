@@ -10,6 +10,7 @@ var utils = {
             case 'created':
             case 'pending':
                 return 'initial';
+            case 'manual':
             case 'running':
                 return 'running';
             case 'failed':
@@ -17,10 +18,17 @@ var utils = {
             case 'success':
                 return 'succeeded';
             case 'canceled':
+            case 'skipped':             // A job is 'skipped' when an earlier dependency is 'failed'.
                 return 'fatal';
-            default:    // 'skipped' 'manual'
+            default:
                 return 'unknown';
         }
+    },
+
+    sleep: function (ms) {
+        return new Promise((resolve) => {
+            setTimeout(resolve, ms);
+        });
     }
 };
 

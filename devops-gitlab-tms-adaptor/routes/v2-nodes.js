@@ -4,7 +4,8 @@ var express = require('express');
 var router = express.Router();
 var utils = require('../utils');
 
-async function getDeploymentJob(glProjects, commitHashFragment, processEnv) {
+async function getCommit(glProjects, commitHashFragment, processEnv) {
+
     let commitPromises = glProjects.map(glProjectId => {                // for each project ID
         const commitsUrl = `https://${processEnv.GITLAB_HOST}/api/v4/projects/${glProjectId}/repository/commits/${commitHashFragment}?stats=false`;
         debug(`axios GET ${commitsUrl}`);
@@ -17,10 +18,16 @@ async function getDeploymentJob(glProjects, commitHashFragment, processEnv) {
     const successResponses = responses.filter(response => response.status === 200);
     if (successResponses.length < 1) { throw new Error(`could not find commit ${commitHashFragment}`); }
     if (successResponses.length > 1) { throw new Error(`found commit ${commitHashFragment} in more than one project`); }
-    const committed_date = successResponses[0].data.committed_date;
+
+    return successResponses[0].data;
+}
+
+async function getDeploymentJob(commit, processEnv) {
+
+    const committed_date = commit.committed_date;
 
     // Use committed_date, environment and status to get deployment, return deployment job number as action id
-    const deploymentUrl = `https://${processEnv.GITLAB_HOST}/api/v4/projects/${successResponses[0].data.project_id}/deployments?` +
+    const deploymentUrl = `https://${processEnv.GITLAB_HOST}/api/v4/projects/${commit.project_id}/deployments?` +
         `environment=Test&status=success&updated_after=${encodeURIComponent(committed_date)}&` +
         'order_by=created_at&sort=desc';
     debug(`axios GET ${deploymentUrl}`);
@@ -28,7 +35,7 @@ async function getDeploymentJob(glProjects, commitHashFragment, processEnv) {
         headers: { 'Authorization': `Bearer ${processEnv.GITLAB_ACCESS_API}` }
     });
 
-    const deployments = deploymentResponse.data.filter(elem => elem.sha === successResponses[0].data.id);
+    const deployments = deploymentResponse.data.filter(elem => elem.sha === commit.id);
     const deployment = deployments[0];
     return deployment;
 }
@@ -133,8 +140,11 @@ router.get('/:nodeId(\\d+)/transportRequests', async function (req, res, next) {
         let transportRequestPosition = 1;
         let statusArray = req.query.status ? decodeURIComponent(req.query.status).split(',') : [];
 
-        if (req.params.nodeId == '2' && statusArray.filter(status => status === 'in').length) {
+        if ((req.params.nodeId === '2' || req.params.nodeId == '3') &&
+            statusArray.filter(status => (status === 'in') || (status === 're')).length) {
+
             const glProjects = utils.getGlProjects(); // [4396]
+            const trStatus = 'initial';
 
             let promises = glProjects.map(glProjectId => {
                 const tagsUrl = `https://${process.env.GITLAB_HOST}/api/v4/projects/${glProjectId}/repository/tags?search=^v`;
@@ -146,7 +156,9 @@ router.get('/:nodeId(\\d+)/transportRequests', async function (req, res, next) {
 
             let responses = await Promise.all(promises);
 
-            transportRequests = responses.reduce((acc, response) => {
+            transportRequests = responses.reduce((acc, response, index) => {
+                const glProjectId = glProjects[index];
+
                 // 'in'(initial) are those tags (transport requests) that are:
                 //  ^vx.y.z-rc.n$
                 //  with no corresponding release tag ^vx.y.z$
@@ -161,12 +173,12 @@ router.get('/:nodeId(\\d+)/transportRequests', async function (req, res, next) {
                     // Map commit to tr. req. id:
                     const trId = utils.commit2id(elem.commit.id);
                     const trEntryId = utils.commit2id(elem.commit.short_id);
-                    const trDescription = `project: 4396, tag: ${elem.name}, commit: ${elem.commit.id}`.
+                    const trDescription = `project: ${glProjectId}, tag: ${elem.name}, commit: ${elem.commit.id}`.
                         replace(/[^\w ._~:\/?#[\]@!$&()*+,;=%-]/g, '_'); // C.f. devops-scripts/tms-upload
 
                     return {
                         "id": trId,           // integer($int64) in the API definition, but we really have only 53 bits, see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/MAX_SAFE_INTEGER
-                        "status": "initial",
+                        "status": trStatus,
                         "archived": false,
                         "position": transportRequestPosition++,
                         "createdBy": elem.commit.committer_email,
@@ -203,22 +215,82 @@ router.post('/:nodeId(\\d+)/transportRequests/import', async function (req, res,
         if (req.body.transportRequests.length !== 1) { throw new Error(`unsupported number of transport requests: ${req.body.transportRequests.length}`); }
 
         const glProjects = utils.getGlProjects(); // [4396]
+        const trId = req.body.transportRequests[0];
+        const commitHashFragment = trId.toString(16).padStart(13, '0');
 
         switch (req.params.nodeId) {
             case "2":   // CONS aka. TEST: should already have been imported
-                const trId = req.body.transportRequests[0];
-                const commitHashFragment = trId.toString(16).padStart(13, '0');
+                {
+                    // Find which project the transport request (= commit) belongs to:
+                    //  use transport id to get committed_date from commit
+                    const commit = await getCommit(glProjects, commitHashFragment, process.env);
+                    const deployment = await getDeploymentJob(commit, process.env);
 
-                // Find which project the transport request (= commit) belongs to:
-                //  use transport id to get committed_date from commit
-                const deployment = await getDeploymentJob(glProjects, commitHashFragment, process.env);
+                    res.send({
+                        "actionId": deployment.deployable.id,
+                        "monitoringURL": `/v2/actions/${deployment.deployable.id}`
+                    });
+                    break;
+                }
 
-                res.send({
-                    "actionId": deployment.deployable.id,
-                    "monitoringURL": `/v2/actions/${deployment.deployable.id}`
-                });
-                // Return deployment job status as action status
-                break;
+            case "3": // QAS
+                {
+                    const commit = await getCommit(glProjects, commitHashFragment, process.env);
+
+                    const tagRefsUrl = `https://${process.env.GITLAB_HOST}/api/v4/projects/${commit.project_id}/repository/` +
+                        `commits/${commit.id}/refs?type=tag`;
+                    debug(`axios GET ${tagRefsUrl}`);
+                    const tagRefsResponse = await axios.get(tagRefsUrl, {
+                        headers: { 'Authorization': `Bearer ${process.env.GITLAB_ACCESS_API}` }
+                    });
+                    const rcTags = tagRefsResponse.data.filter(elem => /^v(\d+\.\d+\.\d+)-rc\.\d+$/.test(elem.name));
+                    if (rcTags.length !== 1) { throw new Error(`expected 1 tag, got ${rcTags.length}`); }
+                    const rcTag = rcTags[0];
+                    const branchName = 'quality-' + rcTag.name.match(/^v(\d+\.\d+\.\d+)-rc\.\d+$/)[1];
+
+                    // Create new branch out of commit
+                    const repoUrl = `https://${process.env.GITLAB_HOST}/api/v4/projects/${commit.project_id}/repository/branches?` +
+                        `branch=${encodeURIComponent(branchName)}&ref=${commit.id}`;
+                    debug(`axios POST ${repoUrl}`);
+                    const postResponse = await axios.post(repoUrl, "", { // Will throw if unsuccessful
+                        headers: { 'Authorization': `Bearer ${process.env.GITLAB_ACCESS_API}` }
+                    });
+
+                    // Now the pipeline will be created - how long can that take?
+                    let countdown = 7, foundIt = false;
+                    let pipelineResponse;
+                    while (countdown-- > 0) {
+                        await utils.sleep(1000);
+
+                        const pipelineUrl = `https://${process.env.GITLAB_HOST}/api/v4/projects/${commit.project_id}/pipelines?` +
+                            `ref=${encodeURIComponent(branchName)}&sha=${commit.id}&order_by=id&sort=desc`;
+                        debug(`axios GET ${pipelineUrl}`);
+                        pipelineResponse = await axios.get(pipelineUrl, {
+                            headers: { 'Authorization': `Bearer ${process.env.GITLAB_ACCESS_API}` }
+                        });
+
+                        if (pipelineResponse.status === 200 && pipelineResponse.data.length >= 1) { foundIt = true; break; }
+                    }
+                    if (!foundIt) { throw new Error(`failed to find pipeline ref=${encodeURIComponent(branchName)}&sha=${commit.id} of project ${commit.project_id}`); }
+
+                    // Return resulting pipeline's 'deploy to Quality' job id
+                    const pipelineJobUrl = `https://${process.env.GITLAB_HOST}/api/v4/projects/${commit.project_id}/pipelines/` +
+                        `${pipelineResponse.data[0].id}/jobs`;
+                    debug(`axios GET ${pipelineJobUrl}`);
+                    const plJobResponse = await axios.get(pipelineJobUrl, {
+                        headers: { 'Authorization': `Bearer ${process.env.GITLAB_ACCESS_API}` }
+                    });
+
+                    const deployToQualityJobs = plJobResponse.data.filter(elem => elem.name === 'deploy to Quality');
+                    if (deployToQualityJobs.length > 1) { throw new Error(`expected 1 'deploy to Quality' job, got ${deployToQualityJobs.length}`); }
+                    const deployToQualityJob = deployToQualityJobs[0];
+
+                    res.send({
+                        "actionId": deployToQualityJob.id,
+                        "monitoringURL": `/v2/actions/${deployToQualityJob.id}`
+                    });
+                    break;
+                }
 
             default:
                 throw new Error('unimplemented');
@@ -239,7 +311,8 @@ router.get('/:nodeId(\\d+)/transportRequests/:trId(\\d+)/logs', async function (
                 const commitHashFragment = trId.toString(16).padStart(13, '0');
 
                 // Find job of environment=Test deployment given the commit hash fragment
-                const deployment = await getDeploymentJob(glProjects, commitHashFragment, process.env);
+                const commit = await getCommit(glProjects, commitHashFragment, processEnv);
+                const deployment = await getDeploymentJob(commit, process.env);
                 const tmStatus = utils.getTmStatus(deployment.deployable.status);
 
                 res.send({
