@@ -1,10 +1,29 @@
+### GET /v2/nodes/4/transportRequests/521986514389554/logs
+GET http://localhost:30000/v2/nodes/4/transportRequests/521986514389554/logs
+
+### GET /v2/actions/?
+GET http://localhost:30000/v2/actions/?
+
+### POST /v2/nodes/4/transportRequests/import
+###     1dabe74c48a320db1d3c8a04d7fba4ec4025097f
+POST http://localhost:30000/v2/nodes/4/transportRequests/import
+Content-Type: application/json
+Accept: application/json
+
+{
+    "transportRequests": [521986514389554]
+}
+
 ### GET /v2/nodes/4/transportRequests?status=in%2cre
 GET http://localhost:30000/v2/nodes/4/transportRequests?status=in%2cre
+
+### GET /v2/nodes/2/transportRequests/521986514389554/logs
+GET http://localhost:30000/v2/nodes/3/transportRequests/521986514389554/logs
 
 ### GET /v2/actions/1825798
 GET http://localhost:30000/v2/actions/1825798
 
-### POST /v2/nodes/2/transportRequests/import
+### POST /v2/nodes/3/transportRequests/import
 ###     1dabe74c48a320db1d3c8a04d7fba4ec4025097f
 POST http://localhost:30000/v2/nodes/3/transportRequests/import
 Content-Type: application/json
