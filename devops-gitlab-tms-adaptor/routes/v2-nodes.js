@@ -23,13 +23,13 @@ async function getCommit(glProjects, commitHashFragment, processEnv) {
     return successResponses[0].data;
 }
 
-async function getDeploymentJob(commit, processEnv, environment) {
+async function getDeployments(commit, processEnv, environment) {
 
     const committed_date = commit.committed_date;
 
     // Use committed_date, environment and status to get deployment, return deployment job number as action id
     const deploymentUrl = `https://${processEnv.GITLAB_HOST}/api/v4/projects/${commit.project_id}/deployments?` +
-        `environment=${environment}&status=success&updated_after=${encodeURIComponent(committed_date)}&` +
+        `environment=${environment}&updated_after=${encodeURIComponent(committed_date)}&` +
         'order_by=created_at&sort=desc';
     debug(`axios GET ${deploymentUrl}`);
     const deploymentResponse = await axios.get(deploymentUrl, {
@@ -37,8 +37,7 @@ async function getDeploymentJob(commit, processEnv, environment) {
     });
 
     const deployments = deploymentResponse.data.filter(elem => elem.sha === commit.id);
-    const deployment = deployments[0];
-    return deployment;
+    return deployments;
 }
 
 /* GET /v2/nodes listing. */
@@ -277,7 +276,11 @@ router.post('/:nodeId(\\d+)/transportRequests/import', async function (req, res,
                     // Find which project the transport request (= commit) belongs to:
                     //  use transport id to get committed_date from commit
                     const commit = await getCommit(glProjects, commitHashFragment, process.env);
-                    const deployment = await getDeploymentJob(commit, process.env, 'Test');
+                    const deployments = await getDeployments(commit, process.env, 'Test');
+                    const successDeployments = deployments.filter(elem => elem.status === 'success');
+                    if (!successDeployments.length) { throw new Error("did not find successful deployment to 'Test'"); }
+                    // Take first successful deployment:
+                    const deployment = successDeployments[0];
 
                     res.send({
                         "actionId": deployment.deployable.id,
@@ -479,9 +482,10 @@ router.get('/:nodeId(\\d+)/transportRequests/:trId(\\d+)/logs', async function (
 
         // Find job of environment=Test deployment given the commit hash fragment
         const commit = await getCommit(glProjects, commitHashFragment, process.env);
-        const deployment = await getDeploymentJob(commit, process.env, environment);
+        const deployments = await getDeployments(commit, process.env, environment);
         let logs = [];
-        if (deployment) {
+        if (deployments.length) {
+            const deployment = deployments[0];
             const tmStatus = utils.getTmStatus(deployment.deployable.status);
 
             logs = [
