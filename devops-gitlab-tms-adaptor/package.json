@@ -2,10 +2,6 @@
     "name": "devops-gitlab-tms-adaptor",
     "description": "Cloud TMS adaptor for GitLab",
     "license": "Apache-2.0",
-    "repository": {
-        "type": "git",
-        "url": "https://code.roche.com/sap-aspire/scp/supporting-projects/devops-gitlab-tms.git"
-    },
     "engines": {
         "node": "^12.0.0"
     },

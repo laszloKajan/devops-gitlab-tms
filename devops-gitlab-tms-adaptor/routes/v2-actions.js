@@ -32,7 +32,7 @@ router.get('/:jobId(\\d+)', async function (req, res, next) {
         const tmStatus = utils.getTmStatus(response.data.status);
 
         function getNodeNameFromJobName(__name) {
-            // Look it up in https://code.roche.com/sap-aspire/scp/supporting-projects/devops-mbt-pipeline/-/blob/master/.gitlab-ci-roche-btp-flow.yml
+            // Look it up in https://github.com/laszloKajan/devops-mbt-pipeline/blob/main/.gitlab-ci-btp-flow.yml
             // TODO: parametrize this
             switch (__name) {
                 case 'deploy to Test': // Not exactly elegant... we could do something via the environments interface.

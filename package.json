@@ -4,12 +4,12 @@
     "description": "Cloud TMS adaptor for GitLab",
     "author": {
         "name": "Laszlo Kajan",
-        "email": "laszlo.kajan@roche.com"
+        "email": "lkajan@debian.org"
     },
     "license": "Apache-2.0",
     "repository": {
         "type": "git",
-        "url": "https://code.roche.com/sap-aspire/scp/supporting-projects/devops-gitlab-tms.git"
+        "url": "https://github.com/laszloKajan/devops-gitlab-tms.git"
     },
     "dependencies": {},
     "devDependencies": {},
